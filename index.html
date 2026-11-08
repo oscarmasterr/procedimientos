@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Procedimientos de seguridad</title>
+<style>
+:root{--bg:#f4f5f2;--card:#fff;--ink:#14232b;--muted:#5b6b73;--line:#d8dcd6;--acc:#f2b705;--acc-ink:#14232b}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1a20;--card:#17262e;--ink:#eef2f0;--muted:#9fb0b8;--line:#2b3d46}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;line-height:1.4}
+header{border-top:10px solid var(--acc);padding:28px 20px 20px;max-width:760px;margin:0 auto}
+h1{margin:0;font-size:clamp(1.6rem,6vw,2.2rem);font-weight:800;letter-spacing:-.01em}
+.sub{margin:6px 0 0;color:var(--muted)}
+main{max-width:760px;margin:0 auto;padding:0 20px 48px}
+.item{display:flex;gap:12px;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.t{min-width:0}
+.code{font-weight:700;overflow-wrap:anywhere}
+.desc{color:var(--muted);font-size:.92rem;overflow-wrap:anywhere}
+.acts{display:flex;gap:8px;flex-shrink:0}
+a.btn{display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:0 16px;border-radius:8px;font-weight:700;text-decoration:none;border:2px solid var(--ink);color:var(--ink)}
+a.btn.p{background:var(--acc);border-color:var(--acc);color:var(--acc-ink)}
+a.btn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+a.folder{display:block;background:var(--card);border:1px solid var(--line);border-left:8px solid var(--acc);border-radius:10px;padding:20px 18px;margin-bottom:12px;font-size:1.15rem;font-weight:700;text-decoration:none;color:var(--ink)}
+.back{display:inline-block;margin:0 0 14px;color:var(--ink);font-weight:600}
+.msg{color:var(--muted);padding:12px 0}
+@media (max-width:520px){.item{flex-direction:column;align-items:stretch}.acts a{flex:1}}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Procedimientos de seguridad</h1>
+  <p class="sub" id="sub">Elige una categoría</p>
+</header>
+<main id="app"></main>
+<script>
+var OWNER="oscarmasterr",REPO="procedimientos";
+var FOLDERS={
+  "emergencia-operacional":"Emergencia Operacional",
+  "procedimientos-criticos":"Procedimientos Criticos",
+  "respuesta-de-emergencia":"Respuesta de Emergencia"
+};
+var app=document.getElementById("app");
+function el(h){var d=document.createElement("div");d.innerHTML=h;return d.firstChild}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+
+function home(){
+  document.getElementById("title").textContent="Procedimientos de seguridad";
+  document.getElementById("sub").textContent="Elige una categoría";
+  app.innerHTML="";
+  Object.keys(FOLDERS).forEach(function(k){
+    app.appendChild(el('<a class="folder" href="#'+k+'">'+esc(FOLDERS[k])+'</a>'));
+  });
+}
+
+function show(key){
+  var name=FOLDERS[key];
+  document.getElementById("title").textContent=name;
+  document.getElementById("sub").textContent="Cargando documentos…";
+  app.innerHTML='<a class="back" href="#">Ver otras categorías</a><div class="msg">Cargando…</div>';
+  var api="https://api.github.com/repos/"+OWNER+"/"+REPO+"/contents/"+encodeURIComponent(name)+"?ref=main";
+  fetch(api).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(list){
+    var pdfs=list.filter(function(f){return /\.pdf$/i.test(f.name)});
+    pdfs.sort(function(a,b){return a.name.localeCompare(b.name,"es",{numeric:true})});
+    app.innerHTML='<a class="back" href="#">Ver otras categorías</a>';
+    document.getElementById("sub").textContent=pdfs.length+" documentos";
+    if(!pdfs.length){app.appendChild(el('<div class="msg">No hay documentos en esta categoría.</div>'));return}
+    pdfs.forEach(function(f){
+      var base=f.name.replace(/\.pdf$/i,"");
+      var m=base.match(/^([A-Za-z0-9]+(?:-[A-Za-z0-9]+)+)\s*(.*)$/);
+      var code=m?m[1]:base,desc=m?m[2]:"";
+      var href=encodeURIComponent(name)+"/"+encodeURIComponent(f.name);
+      app.appendChild(el(
+        '<div class="item"><div class="t"><div class="code">'+esc(code)+'</div>'+
+        (desc?'<div class="desc">'+esc(desc)+'</div>':'')+'</div>'+
+        '<div class="acts"><a class="btn p" href="'+href+'">Abrir</a>'+
+        '<a class="btn" href="'+href+'" download>Descargar</a></div></div>'));
+    });
+  }).catch(function(){
+    document.getElementById("sub").textContent="";
+    app.innerHTML='<a class="back" href="#">Ver otras categorías</a><div class="msg">No se pudo cargar la lista. Revisa tu conexión y vuelve a escanear el código.</div>';
+  });
+}
+
+function route(){
+  var k=location.hash.replace("#","");
+  if(FOLDERS[k])show(k);else home();
+}
+window.addEventListener("hashchange",route);
+route();
+</script>
+</body>
+</html>
